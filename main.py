@@ -1,5 +1,7 @@
 from bs4 import BeautifulSoup
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options 
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 import time
@@ -7,8 +9,17 @@ import csv
 
 
 
-PATH="C:\Program Files (x86)\chromedriver.exe"
-driver= webdriver.Chrome(PATH)
+PATH=Service("C:\Program Files (x86)\chromedriver.exe")
+
+options = Options()
+options.headless = True # Runs Chrome in headless mode.
+options.add_argument("--no-sandbox")
+options.add_argument("--disable-dev-shm-usage")
+options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
+
+driver= webdriver.Chrome(service=PATH,options=options)
+
 url="https://www.jumia.com.ng/flash-sales/"
 driver.get(url)
 
@@ -44,7 +55,7 @@ def main():
         soup2= BeautifulSoup(soup1.prettify(), "html.parser")
 
         oldCsv = []
-        with open('dataset2.csv', 'r', encoding="utf-8") as csvfile:
+        with open('dataset3.csv', 'r', encoding="utf-8") as csvfile:
             csvReader = csv.reader(csvfile, delimiter=',')
             for row in csvReader:
                     oldCsv.append(row)
@@ -67,7 +78,7 @@ def main():
                     addData = False
 
             if addData:
-                with open('dataset2','a+', newline='', encoding='UTF8') as f:
+                with open('dataset3','a+', newline='', encoding='UTF8') as f:
                     writer=csv.writer(f)
                     writer.writerow(data)
                           
@@ -78,6 +89,41 @@ def main():
 
     time.sleep(2)
     driver.quit()
+
+
+def scrape_pages(url) -> None:
+    max_pages = 3
+    current_page = 1
+
+    # Loop through all pages dynamically and build the url using the page number suffix the website uses
+    while current_page <= max_pages:
+        current_page += 1
+        print(f'{url}?page={current_page}')
+
+  
+#         # Get each page's html
+        raw_html = f"https://www.jumia.com.ng/{category}/?page={current_page}#catalog-listing"
+        soup = BeautifulSoup(raw_html.text, 'html.parser')
+
+# #         # Find all table rows and from each table row get the needed data 
+        for entry in soup.find_all('div', {'class': 'info'}):
+            title = entry.find('h3', {'class': 'name'}).text.strip()
+            discount_price= entry.find('div', {'class': 'prc'}).text.strip('â‚¦ ')
+            original_price= getattr(entry.find('div', {'class': 's-prc-w'}),'text','None')
+            original_price= original_price.strip('â‚¦ %')
+            percentage_dsc= getattr(entry.find('div', {'class': 'bdg _dsct _sm'}),'text','None')
+            rating=(entry.find('div', {'class': 'rev'}),'text','None')
+            data= [title,discount_price,original_price,percentage_dsc]
+            
+            with open('dataset1.csv','a+', newline='', encoding='UTF8') as f:
+                writer=csv.writer(f)
+                writer.writerow(data)
+            
+
+        # time.sleep(10) # sleep before scraping next page to not send too many requests at once 
+        # # current_page += 1
+        print('\n\n') # Clearing console up 
+
 
 
 
